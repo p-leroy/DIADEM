@@ -9,7 +9,7 @@ function spherical2cart(theta,phi)
 
 x = cos.(deg2rad.(phi)).*sin.(deg2rad.(theta));
 y = sin.(deg2rad.(phi)).*sin.(deg2rad.(theta));
-z = (1+0*cos.(deg2rad.(phi))).*cos.(deg2rad.(theta));
+z = (1 .+ 0 * cos.(deg2rad.(phi))) .* cos.(deg2rad.(theta));
 
 return x,y,z
 end
