@@ -4,7 +4,7 @@ import re, os
 def correctBin(S11, fBin):
     S11[:,fBin] = (S11[:,fBin+1] + S11[:,fBin-1]) / 2
 
-def computeF2C( base_path, dic_dir, nb_elev, nb_freq, nb_ssb ):
+def computeF2C(base_path, dic_dir, nb_elev, nb_freq, nb_ssb, tag=""):
     nbAbs = 0
     for key in dic_dir:
         nbAbs = nbAbs + len(dic_dir[key])
@@ -15,11 +15,11 @@ def computeF2C( base_path, dic_dir, nb_elev, nb_freq, nb_ssb ):
         for absx in dic_dir[key]:
             print(absx)
             data_dir = f"{base_path}/{key}/{absx}" 
-            freq_S11, S11 = getData_ssb( nb_elev, nb_freq, nb_ssb, data_dir )
+            freq_S11, S11 = getData_ssb(nb_elev, nb_freq, nb_ssb, data_dir, tag=tag)
             if S11_moy.shape == (0,):
-                S11_moy = np.mean( S11, axis=0 )
+                S11_moy = np.mean(S11, axis=0)
             else:
-                S11_moy += np.mean( S11, axis=0 )
+                S11_moy += np.mean(S11, axis=0)
             
     S11_moy /= nbAbs
     return S11_moy
@@ -28,7 +28,7 @@ def dB(x):
     y = 20 * np.log10( np.abs( x ) )
     return y
 
-def getData_ssb( nb_elev, nb_freq, nb_ssb, data_dir, encoding="ISO-8859-1" ):
+def getData_ssb( nb_elev, nb_freq, nb_ssb, data_dir, encoding="ISO-8859-1", tag=""):
     incr = 0
     S11 = np.zeros( (nb_elev, nb_freq), dtype=complex )
     freq_elev = np.zeros( nb_freq )
@@ -37,7 +37,7 @@ def getData_ssb( nb_elev, nb_freq, nb_ssb, data_dir, encoding="ISO-8859-1" ):
     for ielev in range( nb_elev ):
         counter = 0
         for ssb in range( nb_ssb ):
-            prefix = f"{data_dir}/SEQ_{incr}/S11_ssbande_{ssb+1}_000"
+            prefix = f"{data_dir}/SEQ_{incr}/{tag}S11_ssbande_{ssb+1}_000"
             tmp_fre = np.loadtxt( prefix + ".FRE", skiprows=9, encoding=encoding)
             tmp_frp = np.loadtxt( prefix + ".FRP", skiprows=9, encoding=encoding)
             freq_ssb = tmp_fre[:,0]
@@ -84,7 +84,7 @@ def getFreqAndS11( data_dir, nb_ssb, seq0=0, verbose=0 ):
             print( prefix )
         seq = k
         ssbande = k + 1
-        freq, S11 = fetchFreqAndS11( prefix, verbose=verbose )
+        freq, S11 = fetchFreqAndS11(prefix, verbose=verbose)
         freq_all = np.concatenate((freq_all, freq)) if freq_all.size else freq
         S11_all  = np.concatenate((S11_all,  S11))  if  S11_all.size else S11
     if verbose:
@@ -123,10 +123,10 @@ def getWindow(d, center, width, id="llc"):
     return gate
 
 def getReflectivite( S11, plaqueRef, fondDeChambre, gate ):
-    S11_plaque_ref_tg = np.fft.fft( np.fft.ifft( plaqueRef - fondDeChambre ) * gate )
+    S11_plaque_ref_tg = np.fft.fft(np.fft.ifft(plaqueRef - fondDeChambre) * gate)
     S11_minus_fdc    = S11 - fondDeChambre
-    s11_minus_fdc_td = np.fft.ifft( S11_minus_fdc, axis=1 )
+    s11_minus_fdc_td = np.fft.ifft(S11_minus_fdc, axis=1 )
     s11_minus_fdc_tg = s11_minus_fdc_td * gate
-    S11_minus_moy_tg = np.fft.fft( s11_minus_fdc_tg, axis=1 )
-    reflectivite     = S11_minus_moy_tg / S11_plaque_ref_tg
+    S11_minus_fdc_tg = np.fft.fft(s11_minus_fdc_tg, axis=1 )
+    reflectivite     = S11_minus_fdc_tg / S11_plaque_ref_tg
     return reflectivite
