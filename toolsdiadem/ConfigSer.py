@@ -1,4 +1,4 @@
-import configparser
+import configparser, os
 
 import numpy as np
 
@@ -29,8 +29,9 @@ class ConfigSer(object):
             self.el0 - self.half_range, 
             self.el0 + self.half_range, 
             self.nb_elev)
-        self.base_path = config['parameters']['base_path']
-        self.out_path = config['parameters']['out_path']
+        #self.base_path = config['parameters']['base_path']
+        self.base_path = os.path.dirname(self.filename)
+        self.out_path = os.path.join(self.base_path, config['parameters']['out_path'])
         
         # ['data']
         self.dic_dir = {key: eval(config['data'][key]) for key in config['data']}
