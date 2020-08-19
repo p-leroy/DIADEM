@@ -59,21 +59,21 @@ class ConfigSer2(object):
         
         # ['path']
         self.base_path = os.path.dirname(self.filename)
-        self.out_path = os.path.join(self.base_path, config['path']['out_path'])
+        self.out_path = os.path.join(self.base_path, config['path']['processing'])
         
         # ['processing']
         self.gateWidth = float(config['processing']['gateWidth'])
         self.gateCenter = float(config['processing']['gateCenter'])
         self.centerFreq = float(config['processing']['centerFreq'])
         self.bandWidth = float(config['processing']['bandWidth'])
-        self.idxElevation = float(config['processing']['idxElevation'])
+        self.idxElevation = int(config['processing']['idxElevation'])
         self.vmin = float(config['processing']['vmin'])
         self.vmax = float(config['processing']['vmax'])
 
     def printConfig(self):
         print(self.filename)
-        print(f"base_path {self.base_path}")
-        print(f"out_path {self.out_path}")
+        print(f"base_path (path to the ini file): {self.base_path}")
+        print(f"out_path (for the processing outputs): {self.out_path}")
         print(f"gateWidth {self.gateWidth}")
         print(f"gateCenter {self.gateCenter}")
         print(f"centerFreq {self.centerFreq}")
