@@ -8,43 +8,46 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 
-def get_Nf_Ny(data_dir):
-    f_y = []
+def get_Nf_Nstep(data_dir):
+    f_step = []
     for file in os.listdir(data_dir):
         if fnmatch.fnmatch(file, "*.amp"):
             sfile = file.split(".amp")[0].split("_")
-            f_y.append( (sfile[1], sfile[2]) )
-    Nf = max( [int(f_y[0]) for f_y in f_y if f_y[1] == '000'] ) + 1
-    Ny = max( [int(f_y[1]) for f_y in f_y if f_y[0] == '000'] ) + 1
-    print(data_dir)
-    print("Nf = {}, Ny = {}".format(Nf, Ny))
-    return Nf, Ny
+            f_step.append((sfile[1], sfile[2]))
+    Nf = max([int(f_step[0]) for f_step in f_step if f_step[1] == '000']) + 1
+    Nstep = max([int(f_step[1]) for f_step in f_step if f_step[0] == '000']) + 1
+    print(f"data_dir: {data_dir}")
+    print("Nf = {}, Nstep = {}".format(Nf, Nstep))
+    return Nf, Nstep
 
 def getF(nbFreq, data_prefix, root_dir):
     f = np.zeros(nbFreq)
-    for freqIdx in range( nbFreq ):
-        filename = data_prefix + f"_{freqIdx:03d}_000.amp"
+    for freqIdx in range(nbFreq):
+        filename = os.path.join(root_dir, f"{data_prefix}_{freqIdx:03d}_000.amp")
         with open(filename) as file:
             for line in file:
                 if "FreqValue" in line:
                     f[freqIdx] = float(line.split("=")[1])
                 elif "Data#1" in line:
                     break
-    print(root_dir + " Nf = {}, fmin = {}, fmax = {}".format(f.size, np.amin(f), np.amax(f)))
+    print(f"data_dir: {root_dir}")
+    print("Nf = {}, fmin = {}, fmax = {}".format(f.size, np.amin(f), np.amax(f)))
     return f
 
-def getY(nbY, data_prefix, root_dir):
-    y = np.zeros(nbY)
-    for yIdx in range( nbY ):
-        filename = data_prefix + f"_000_{yIdx:03d}.amp"
+def getStep(nbY, data_prefix, root_dir):
+    step = np.zeros(nbY)
+    for idx in range(nbY):
+        filename = os.path.join(root_dir, f"{data_prefix}_000_{idx:03d}.amp")
         with open(filename) as file:
             for line in file:
-                if "StepAxis=y" in line:
-                    y[yIdx] = float(line.split(" ")[-2])
+                if "StepAxis=" in line:
+                    step[idx] = float(line.split(" ")[-2])
+                    axis = line.split(" ")[0].split("=")[1]
                 elif "Data#1" in line:
                     break
-    print(root_dir + " Ny = {}, ymin = {}, ymax = {}".format(y.size, np.amin(y), np.amax(y)))
-    return y
+    print(f"data_dir: {root_dir}")
+    print(f"Nstep {step.size} ({axis}), min {np.amin(step)}, max {np.amax(step)}")
+    return step
 
 def get_headerSize(filename):
     with open(filename) as file:
@@ -53,22 +56,43 @@ def get_headerSize(filename):
                 break
     return counter + 1
 
-def get_x_val(data_prefix, fi, yi, ext):
+def get_axes(filename):
+    with open(filename) as file:
+        for line in file:
+            if "ScanAxis=" in line:
+                ScanAxis = line.split("=")[1].rstrip()
+            if "StepAxis=" in line:
+                StepAxis = line.split(" ")[0].split("=")[1]
+                StepPosition = float(line.split(" ")[-2])
+            elif "Data#1" in line:
+                break
+    return ScanAxis, StepAxis, StepPosition
+
+def get_scan_val(data_prefix, fi, yi, ext):
     filename = data_prefix + f"_{fi:03d}_{yi:03d}" + ext
     headerSize = get_headerSize(filename)
+    ScanAxis, StepAxis, StepPosition = get_axes(filename)
+    Freq = None
+    with open(filename) as file:
+        for line in file:
+            if "Remarks=Freq." in line:
+                freq = float(line.split(" ")[-2])
+            elif "Data#1" in line:
+                break
     # read the data
-    x, val = np.genfromtxt(filename, skip_header=headerSize, unpack=True)
-    return x, val
+    scan, val = np.genfromtxt(filename, skip_header=headerSize, unpack=True)
+    print(f"[{ext}] {freq} GHz, Nscan {scan.size} ({ScanAxis}), min {np.amin(scan)}, max {np.amax(scan)}, StepAxis {StepAxis}, StepPosition {StepPosition}")
+    return scan, val, freq
 
-def getAmpPhaArrays(Nx, Ny, fi, data_prefix):
-    ampArray = np.zeros((Ny, Nx))
-    phaArray = np.zeros((Ny, Nx))
-    for yi in range(Ny):
-        x, amp = get_x_val(data_prefix, fi, yi, ".amp")
-        ampArray[yi, :] = amp[:]
-        x, pha = get_x_val(data_prefix, fi, yi, ".pha")
-        phaArray[yi, :] = pha[:]
-    return ampArray, phaArray
+def getAmpPhaArrays(Nscan, Nstep, fi, data_prefix):
+    ampArray = np.zeros((Nstep, Nscan))
+    phaArray = np.zeros((Nstep, Nscan))
+    for step in range(Nstep):
+        scan, amp, freq = get_scan_val(data_prefix, fi, step, ".amp")
+        ampArray[step, :] = amp[:]
+        scan, pha, freq = get_scan_val(data_prefix, fi, step, ".pha")
+        phaArray[step, :] = pha[:]
+    return ampArray, phaArray, freq
 
 def getComplex(amp, pha):
     linAmp = np.power( 10, amp / 20 )
@@ -82,16 +106,15 @@ def getThetaPhi(kx, ky, kz, k0):
     phi = np.arctan2(ky, kx)
     return theta, phi
 
-def saveData(root_dir, nb, ampAndPhaArrays, X0, Y):
-    header = "x y amp pha"
-    filename = root_dir + ampAndPhaArrays[nb][2] + "_amp_pha_32GHz.data"
+def saveData(root_dir, ampAndPha, scan, freq, step):
+    header = "scan amp pha"
+    filename = root_dir + f"{freq}_step{step}_amp_pha_32GHz.data"
     print("save " + filename)
     np.savetxt(filename, 
                np.column_stack(( 
-                   X0.flatten(), 
-                   Y.flatten(), 
-                   ampAndPhaArrays[nb][0].flatten(), 
-                   ampAndPhaArrays[nb][1].flatten())),
+                   scan.flatten(),
+                   ampAndPha[0][step].flatten(), 
+                   ampAndPha[1][step].flatten())),
                header=header,
                comments=""
               )

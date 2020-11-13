@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 def readCfg( cfg_file ):
