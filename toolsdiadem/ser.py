@@ -82,8 +82,6 @@ def getFreqAndS11( data_dir, nb_ssb, seq0=0, verbose=0 ):
         prefix = f"{data_dir}/SEQ_{k+seq0}/S11_ssbande_{k+1}_000"
         if verbose:
             print( prefix )
-        seq = k
-        ssbande = k + 1
         freq, S11 = fetchFreqAndS11(prefix, verbose=verbose)
         freq_all = np.concatenate((freq_all, freq)) if freq_all.size else freq
         S11_all  = np.concatenate((S11_all,  S11))  if  S11_all.size else S11
